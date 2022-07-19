@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Post;
 
 class PostController extends Controller
 {
@@ -24,7 +25,7 @@ class PostController extends Controller
      */
     public function create()
     {
-        //
+       return view('admin.posts.create');
     }
 
     /**
@@ -34,8 +35,25 @@ class PostController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
-    {
-        //
+    {   //validazione
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string|max:65535',
+            'published' => 'sometimes|accepted'
+        ]);
+        //prendiamo dati inseriti nl form
+        $data = $request->all();
+        //ci colleghiamo al model e creiamo un nuovo oggetto
+        $newPost = New Post;
+        //passiamo l array con i dati inseriti nel form
+        $newPost->fill($data);
+
+        $newPost->slug = $this->getSlug($data['title']);
+
+        $newPost->published = isset($data['published']); // true o false
+        $newPost->save();
+        //reindirizziamo alla rotta dove vedremo il nostro nuovo elemento
+        return redirect()-> route('admin.posts', $newPost->id);
     }
 
     /**
