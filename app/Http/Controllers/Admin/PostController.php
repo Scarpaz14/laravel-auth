@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
 use App\Post;
 
 class PostController extends Controller
@@ -15,7 +17,9 @@ class PostController extends Controller
      */
     public function index()
     {
-        //
+        $posts = Post::all();
+
+        return view('admin.posts.index', compact('posts'));
     }
 
     /**
@@ -25,7 +29,7 @@ class PostController extends Controller
      */
     public function create()
     {
-       return view('admin.posts.create');
+        return view('admin.posts.create');
     }
 
     /**
@@ -35,25 +39,24 @@ class PostController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
-    {   //validazione
+    {
+        // validazione
         $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:65535',
             'published' => 'sometimes|accepted'
         ]);
-        //prendiamo dati inseriti nl form
+        // prendo i dati dalla request e creo il post
         $data = $request->all();
-        //ci colleghiamo al model e creiamo un nuovo oggetto
-        $newPost = New Post;
-        //passiamo l array con i dati inseriti nel form
+        $newPost = new Post();
         $newPost->fill($data);
 
         $newPost->slug = $this->getSlug($data['title']);
 
         $newPost->published = isset($data['published']); // true o false
         $newPost->save();
-        //reindirizziamo alla rotta dove vedremo il nostro nuovo elemento
-        return redirect()-> route('admin.posts', $newPost->id);
+        // redirect alla pagina del post appena creato
+        return redirect()->route('admin.posts.show', $newPost->id);
     }
 
     /**
@@ -62,9 +65,9 @@ class PostController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Post $post)
     {
-        //
+        return view('admin.posts.show', compact('post'));
     }
 
     /**
@@ -73,9 +76,9 @@ class PostController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit(Post $post)
     {
-        //
+        return view('admin.posts.edit', compact('post'));
     }
 
     /**
@@ -85,9 +88,27 @@ class PostController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Post $post)
     {
-        //
+        // validazione
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string|max:65535',
+            'published' => 'sometimes|accepted'
+        ]);
+        // aggiornamento
+        $data = $request->all();
+        // se cambia il titolo genero un altro slug
+        if( $post->title != $data['title'] ) {
+            $post->slug = $this->getSlug($data['title']);
+        }
+        $post->fill($data);
+
+        $post->published = isset($data['published']); // true o false
+
+        $post->save();
+        // redirect
+        return redirect()->route('admin.posts.show', $post->id);
     }
 
     /**
@@ -96,8 +117,23 @@ class PostController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(Post $post)
     {
-        //
+        $post->delete();
+
+        return redirect()->route('admin.posts.index');
+    }
+
+    private function getSlug($title)
+    {
+        $slug = Str::of($title)->slug('-');
+        $count = 1;
+
+        while( Post::where('slug', $slug)->first() ) {
+            $slug = Str::of($title)->slug('-') . "-{$count}";
+            $count++;
+        }
+
+        return $slug;
     }
 }
